@@ -111,11 +111,16 @@ def handle_event(status_code, data_0, data_1, control_state):
 
     elif status_code == MIDI_NOTE_ON:
         key = data_0
+        velocity = data_1
+
+        player.play_note(key, velocity)
+
         if VELOCITY_MODE:
-            velocity = data_1
+            stroke_velocity = data_1
         else:
-            velocity = (key - LOWEST_KEY) / (HIGHEST_KEY - LOWEST_KEY) * 128
-        hit_ball(velocity)
+            stroke_velocity = (key - LOWEST_KEY) / (HIGHEST_KEY - LOWEST_KEY) * 128
+
+        hit_ball(stroke_velocity)
 
     elif status_code == 129:
         mouse.click_down()
@@ -139,6 +144,9 @@ if __name__ == "__main__":
     pygame.midi.init()
     device_id = get_midi_device()
     midi_in = pygame.midi.Input(device_id)
+
+    # This has to be after initializing pygame midi because for some reason pyfluidsynth tries to grab all the midi devices
+    from player import player
 
     try:
         loop()
