@@ -1,7 +1,9 @@
 import time
 import pygame.midi
-import uinput
-from dataclasses import dataclass
+import sys
+
+if sys.platform == "linux":
+    from linuxmouse import mouse
 
 
 # Name or prefix for the midi input device to use
@@ -27,7 +29,6 @@ HIGHEST_KEY = 72
 # Use midi velocity to determine hit speed. Interesting but very touchy.
 VELOCITY_MODE = False
 
-
 def get_midi_device():
     """
     Search for a midi device with the substring set in MIDI_DEVICE 
@@ -52,17 +53,17 @@ def hit_ball(velocity):
 
     # Click mouse down
     print("clicking down")
-    device.emit(uinput.BTN_LEFT, 1)
+    mouse.click_down()
     time.sleep(0.1)
 
     # Move mouse up to match velocity
     print(f"setting velocity to {power}")
-    device.emit(uinput.REL_Y, power)
+    mouse.move_y(power)
     time.sleep(0.1)
 
     # Mouse up
     print("clicking up")
-    device.emit(uinput.BTN_LEFT, 0)
+    mouse.click_up()
 
 def handle_event(status_code, data_0, data_1, control_state):
     """ Handle a midi event """
@@ -80,11 +81,11 @@ def handle_event(status_code, data_0, data_1, control_state):
             fine_last_pos = dial_pos
             movement = FINE_MOVEMENT
 
-        device.emit(uinput.REL_X, delta * movement)
+        mouse.move_x(delta * movement)
 
     elif status_code == MIDI_NOTE_ON:
         key = data_0
-        if velocity_mode:
+        if VELOCITY_MODE:
             velocity = data_1
         else:
             velocity = (key - LOWEST_KEY) / (HIGHEST_KEY - LOWEST_KEY) * 128
@@ -109,8 +110,6 @@ if __name__ == "__main__":
     pygame.midi.init()
     device_id = get_midi_device()
     midi_in = pygame.midi.Input(device_id)
-
-    device = uinput.Device([uinput.REL_X, uinput.REL_Y, uinput.BTN_LEFT, uinput.BTN_RIGHT])
 
     try:
         loop()
