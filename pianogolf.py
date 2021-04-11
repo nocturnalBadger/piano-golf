@@ -4,6 +4,8 @@ import sys
 
 if sys.platform == "linux":
     from linuxmouse import mouse
+elif sys.platform == "win32":
+    from windowsmouse import mouse
 
 
 # Name or prefix for the midi input device to use
@@ -16,10 +18,14 @@ MIDI_NOTE_OFF = 128
 MIDI_CONTROL_CHANGE = 176
 
 # Definitions for side-to-side controls
-COARSE_KNOB = 1
-FINE_KNOB = 2
-COARSE_MOVEMENT = 50
-FINE_MOVEMENT = 5
+MOVEMENT_KNOBS = {
+    1: 50, # Midi control #1 moves 50 mouse units per unit, etc.
+    2: 5,
+    3: 1
+}
+
+# Set the midi knob to control spin (if enabled in game)
+SPIN_KNOB = 5
 
 # Definitions for key range (my AKAI MPK mini goes from c3 to c5)
 # This makes middle c exactly half power
@@ -28,6 +34,10 @@ HIGHEST_KEY = 72
 
 # Use midi velocity to determine hit speed. Interesting but very touchy.
 VELOCITY_MODE = False
+
+setting_spin = False
+spin_adj_time = time.time()
+
 
 def get_midi_device():
     """
@@ -47,7 +57,7 @@ def hit_ball(velocity):
     Script mouse movements to make a shot with the given velocity
     :param velocity: relative shot power from 0 to 128
     """
-    FULL_BEANS = -1000
+    FULL_BEANS = -500
 
     power = int(FULL_BEANS * (velocity / 128))
 
@@ -65,23 +75,39 @@ def hit_ball(velocity):
     print("clicking up")
     mouse.click_up()
 
+def set_spin(spin_value):
+    FULL_SPIN = 350
+    print(f"setting spin to {spin_value}")
+
+    spin_value = int(-FULL_SPIN * ((spin_value - 128 / 2) / 128))
+    print(f"moving mouse {spin_value} units to achieve spin")
+
+    mouse.right_click_down()
+
+    mouse.move_x(spin_value)
+
+    mouse.right_click_up()
+
+
 def handle_event(status_code, data_0, data_1, control_state):
     """ Handle a midi event """
-    coarse_last_pos, fine_last_pos = control_state
     if status_code == MIDI_CONTROL_CHANGE:
         dial_num = data_0
         dial_pos = data_1
 
-        if dial_num == COARSE_KNOB:
-            delta = dial_pos - coarse_last_pos
-            coarse_last_pos = dial_pos
-            movement = COARSE_MOVEMENT
-        elif dial_num == FINE_KNOB:
-            delta = dial_pos - fine_last_pos
-            fine_last_pos = dial_pos
-            movement = FINE_MOVEMENT
+        # Compare position with known control state
+        last_pos = control_state[dial_num]
+        delta = dial_pos - last_pos
 
-        mouse.move_x(delta * movement)
+        if dial_num in MOVEMENT_KNOBS:
+            movement = MOVEMENT_KNOBS[dial_num]
+            mouse.move_x(delta * movement)
+
+        if dial_num == SPIN_KNOB:
+            set_spin(dial_pos)
+
+        control_state[dial_num] = dial_pos
+
 
     elif status_code == MIDI_NOTE_ON:
         key = data_0
@@ -91,12 +117,15 @@ def handle_event(status_code, data_0, data_1, control_state):
             velocity = (key - LOWEST_KEY) / (HIGHEST_KEY - LOWEST_KEY) * 128
         hit_ball(velocity)
 
-    return (coarse_last_pos, fine_last_pos)
+    elif status_code == 129:
+        mouse.click_down()
+
+    return control_state
 
 def loop():
     """ Main event loop """
     # Record knob positions
-    control_state = (0, 0)
+    control_state = {x: 0 for x in range(1, 9)}
     while True:
         if midi_in.poll():
             midi_events = midi_in.read(999)
