@@ -20,7 +20,7 @@ class Player:
     def play_note(self, key, velocity):
         self.start_note(key, velocity)
 
-        timer = threading.Timer(1, self.end_note, [key])
+        timer = threading.Timer(2, self.end_note, [key])
         timer.start()
 
 player = Player()
