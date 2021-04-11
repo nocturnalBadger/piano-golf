@@ -9,6 +9,7 @@ This project reads inputs from a midi controller (I'm using an AKAI MPK Mini) an
 ## Features
 * Set your trajectory with K1-K3 ( in order of coarse to fine control). 
 * Fire using any of the note keys. The lowest note (c3) for minimum power; highest note (c5) for maximum power.
+* Yells "FORE!" at a pitch and volume according to the key pressed
 * Optionally, use midi velocity input to set stroke power (cool idea but very touchy)
 * Tap Pad 5 to hold left click (enables the aiming reticle)
 * [experimental] Use K5 to set spin on the ball (if enabled in game)
